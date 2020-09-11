@@ -51,6 +51,8 @@ public class MainActivity extends AppCompatActivity implements NoteListeners {
     private List<Note> notesList;
     private NoteAdapter notesAdapter;
     private AlertDialog dialogAddURL;
+    private AlertDialog dialogDeleteNote;
+
 
 
     private int noteClickedPosition = -1;
@@ -137,6 +139,7 @@ public class MainActivity extends AppCompatActivity implements NoteListeners {
         });
     }
 
+
     private void selectImage() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         if (intent.resolveActivity(getPackageManager()) != null) {
@@ -188,7 +191,57 @@ public class MainActivity extends AppCompatActivity implements NoteListeners {
         startActivityForResult(intent, REQUEST_CODE_UPDATE_NOTE);
     }
 
-    private void getNotes(final int requestCode, final boolean isNoteDeleted) {
+    @Override
+    public void onLongNoteClicked(Note note, int position) {
+        noteClickedPosition = position;
+        showDeleteNoteDialog();
+        Toast.makeText(MainActivity.this, "Long Click", Toast.LENGTH_SHORT).show();
+    }
+    private void showDeleteNoteDialog() {
+        if (dialogDeleteNote == null) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            View view = LayoutInflater.from(this).inflate(
+                    R.layout.layout_delete_note,
+                    (ViewGroup) findViewById(R.id.layoutDeleteNoteContainer)
+            );
+
+            builder.setView(view);
+            dialogDeleteNote = builder.create();
+            if (dialogDeleteNote.getWindow() != null) {
+                dialogDeleteNote.getWindow().setBackgroundDrawable(new ColorDrawable(0));
+            }
+            view.findViewById(R.id.textDeleteNote).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    class DeleteNoteTask extends AsyncTask<Void, Void, Void> {
+
+                        @Override
+                        protected Void doInBackground(Void... voids) {
+                            NotesDatabase.getNotesDatabase(getApplicationContext()).noteDao().deleteNote(notesList.get(noteClickedPosition));
+                            return null;
+                        }
+
+                        @Override
+                        protected void onPostExecute(Void aVoid) {
+                            super.onPostExecute(aVoid);
+                            dialogDeleteNote.dismiss();
+                            onResume();
+                        }
+                    }
+                    new DeleteNoteTask().execute();
+                }
+            });
+            view.findViewById(R.id.textCancel).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    dialogDeleteNote.dismiss();
+                }
+            });
+        }
+        dialogDeleteNote.show();
+    }
+
+            private void getNotes(final int requestCode, final boolean isNoteDeleted) {
         @SuppressLint("StaticFieldLeak")
         class GetNotesTask extends AsyncTask<Void, Void, List<Note>> {
 
